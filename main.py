@@ -5,8 +5,8 @@ from datetime import datetime\
 \
 # Configuraci\'f3n de p\'e1gina\
 st.set_page_config(\
-    page_title="ViggoFit - Elite Tracker",\
-    page_icon="
+    page_title="ViggoFit - App de Atleta",\
+    page_icon="🏋️‍♂️"
 \f1 \uc0\u55356 \u57291 \u65039 \u8205 \u9794 \u65039 
 \f0 ",\
     layout="centered"\
