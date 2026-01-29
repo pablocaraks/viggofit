@@ -1,0 +1,5 @@
+{
+  "name": "ViggoFit - Gym Tracker (Streamlit Edition)",
+  "description": "Aplicación deportiva de alto rendimiento con backend en Google Sheets y frontend en Streamlit.",
+  "requestFramePermissions": []
+}
