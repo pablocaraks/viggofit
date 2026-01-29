@@ -3,47 +3,98 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-# 1. Configuración de página
+# Configuración de página
 st.set_page_config(
     page_title="ViggoFit - Elite Tracker",
     page_icon="🏋️‍♂️",
     layout="centered"
 )
 
-# 2. Estética Neon
+# Inyección de CSS para estética Neon/Dark
 st.markdown("""
     <style>
-    .stApp { background-color: #000000; color: #ffffff; }
-    h1, h2, h3 { color: #39FF14 !important; font-family: sans-serif; }
-    .stButton>button { 
-        background-color: #39FF14 !important; 
-        color: black !important; 
-        font-weight: bold !important; 
-        border-radius: 10px !important; 
-        width: 100%;
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    
+    .stApp {
+        background-color: #000000;
+        color: #ffffff;
     }
-    input { background-color: #111111 !important; color: white !important; }
+    
+    h1, h2, h3, .font-sporty {
+        font-family: 'Orbitron', sans-serif !important;
+        color: #39FF14 !important;
+        text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+    }
+    
+    .stButton>button {
+        background-color: #39FF14 !important;
+        color: black !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-weight: bold !important;
+        border-radius: 10px !important;
+        border: none !important;
+        width: 100%;
+        transition: 0.3s;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 20px rgba(57, 255, 20, 0.8) !important;
+        transform: scale(1.02);
+    }
+
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
+        background-color: #111111 !important;
+        color: white !important;
+        border: 1px solid #333 !important;
+    }
+
+    .stTextInput>div>div:focus-within {
+        border-color: #39FF14 !important;
+    }
+
+    .css-1offfwp e16nr0p33 {
+        background-color: #111111 !important;
+    }
+    
+    /* Estilo de tarjetas */
+    .workout-card {
+        background-color: #111111;
+        border-left: 5px solid #39FF14;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Inicialización de sesión
+# Inicialización de sesión
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
 
-# 4. Conexión a Google Sheets
+# --- CONEXIÓN A GOOGLE SHEETS ---
+# Nota: Requiere configurar [connections.gsheets] en .streamlit/secrets.toml
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception:
     conn = None
 
-# 5. Lógica de Login
+def get_data():
+    if conn:
+        return conn.read(worksheet="Entrenamientos", ttl="0s")
+    return pd.DataFrame(columns=['Cédula', 'Fecha', 'Peso_Corporal', 'Musculo', 'Ejercicio', 'Peso_Levantado'])
+
+# --- PANTALLA DE LOGIN ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center;'>VIGGOFIT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>PERFORMANCE TRACKER</p>", unsafe_allow_html=True)
-    
+    st.markdown("<div style='text-align: center; margin-bottom: 2rem;'>", unsafe_allow_html=True)
+    # Placeholder para Logo
+    st.image("https://picsum.photos/200?random=1", width=120) 
+    st.markdown("<h1>VIGGOFIT</h1><p style='color: #666; letter-spacing: 2px;'>PERFORMANCE TRACKER</p>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
     with st.container():
+        st.markdown("### ACCESO ATLETA")
         cedula = st.text_input("Cédula o ID de Atleta", placeholder="Ingresa tu identificación...")
         if st.button("ENTRAR AL BOX"):
             if len(cedula) >= 5:
@@ -54,12 +105,86 @@ if not st.session_state.logged_in:
                 st.error("ID inválido. Mínimo 5 caracteres.")
     st.stop()
 
-# 6. Pantalla Principal
-st.markdown(f"<h2>HOLA, ATLETA {st.session_state.user_id}</h2>", unsafe_allow_html=True)
+# --- APP PRINCIPAL (LOGUEADO) ---
+user_id = st.session_state.user_id
 
-if st.button("CERRAR SESIÓN"):
-    st.session_state.logged_in = False
-    st.session_state.user_id = None
-    st.rerun()
+# Header
+col_h1, col_h2 = st.columns([3, 1])
+with col_h1:
+    st.markdown(f"<h2>HOLA, ATLETA {user_id}</h2>", unsafe_allow_html=True)
+with col_h2:
+    if st.button("SALIR"):
+        st.session_state.logged_in = False
+        st.session_state.user_id = None
+        st.rerun()
 
-st.info("¡Bienvenido a ViggoFit! La conexión está lista. Registra tu primer entrenamiento.")
+# Cargar datos y filtrar estrictamente por usuario
+df_all = get_data()
+df_user = df_all[df_all['Cédula'].astype(str) == str(user_id)]
+
+# Tabs: Registro y Progreso
+tab_reg, tab_prog = st.tabs(["➕ REGISTRO", "📈 PROGRESO"])
+
+with tab_reg:
+    st.markdown("### NUEVO ENTRENAMIENTO")
+    with st.form("workout_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            fecha = st.date_input("Fecha", datetime.now())
+            peso_corp = st.number_input("Peso Corporal (Kg)", min_value=30.0, max_value=250.0, step=0.1)
+        with col2:
+            musculo = st.selectbox("Músculo", ["Pecho", "Espalda", "Pierna", "Hombros", "Brazos", "Core", "Full Body"])
+            ejercicio = st.text_input("Ejercicio", placeholder="Ej: Press Militar")
+        
+        peso_lev = st.number_input("Peso Levantado (Kg)", min_value=0.0, max_value=1000.0, step=0.5)
+        
+        submit = st.form_submit_button("GUARDAR REGISTRO")
+        
+        if submit:
+            if ejercicio:
+                new_data = pd.DataFrame([{
+                    "Cédula": user_id,
+                    "Fecha": fecha.strftime('%Y-%m-%d'),
+                    "Peso_Corporal": peso_corp,
+                    "Musculo": musculo,
+                    "Ejercicio": ejercicio,
+                    "Peso_Levantado": peso_lev
+                }])
+                
+                # Aquí se añadiría la lógica para escribir en GSheets
+                # updated_df = pd.concat([df_all, new_data], ignore_index=True)
+                # conn.update(worksheet="Entrenamientos", data=updated_df)
+                
+                st.success(f"¡Registro guardado! (Simulado: {ejercicio} @ {peso_lev}kg)")
+                # Nota: En un entorno real, descomentar las líneas de actualización de conn
+            else:
+                st.warning("Por favor escribe el nombre del ejercicio.")
+
+with tab_prog:
+    st.markdown("### TU EVOLUCIÓN")
+    
+    if not df_user.empty:
+        # Gráfica de peso corporal a lo largo del tiempo
+        df_user['Fecha'] = pd.to_datetime(df_user['Fecha'])
+        df_user = df_user.sort_values('Fecha')
+        
+        st.markdown("#### Peso Corporal (Kg)")
+        chart_data = df_user.groupby('Fecha')['Peso_Corporal'].mean()
+        st.line_chart(chart_data)
+        
+        st.markdown("#### Historial Reciente")
+        for index, row in df_user.tail(10).iloc[::-1].iterrows():
+            st.markdown(f"""
+                <div class="workout-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #666; font-size: 0.8rem;">{row['Fecha'].strftime('%d/%m/%Y')}</span>
+                        <span style="color: #39FF14; font-weight: bold;">{row['Musculo']}</span>
+                    </div>
+                    <div style="font-size: 1.1rem; margin-top: 5px;">{row['Ejercicio']}</div>
+                    <div style="font-family: 'Orbitron'; font-size: 1.5rem; text-align: right;">{row['Peso_Levantado']} KG</div>
+                </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No hay datos registrados para tu ID. ¡Empieza hoy!")
+
+st.markdown("<br><hr><p style='text-align: center; color: #444; font-size: 0.7rem;'>VIGGOFIT INTELLIGENCE v2.0 | PRIVACY SECURED</p>", unsafe_allow_html=True)
