@@ -81,7 +81,7 @@ except Exception:
     conn = None
 
 def get_data():
-    if conn:
+    if conn:"https://docs.google.com/spreadsheets/d/1KAu4g7a8wFFIVLlyC6sheWHUs76CtXHix9nr4GcyoGE/edit?usp=sharing"
         return conn.read(worksheet="Entrenamientos", ttl="0s")
     return pd.DataFrame(columns=['Cédula', 'Fecha', 'Peso_Corporal', 'Musculo', 'Ejercicio', 'Peso_Levantado'])
 
